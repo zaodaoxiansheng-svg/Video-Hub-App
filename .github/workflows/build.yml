@@ -10,11 +10,6 @@ jobs:
   build_on_windows:
     runs-on: windows-latest
 
-    # 定义全局工作目录，省去每一步都写一遍
-    defaults:
-      run:
-        working-directory: ./Video-Hub-App
-
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -24,12 +19,20 @@ jobs:
         with:
           node-version: 18
 
-      - name: Install Dependencies
+      - name: Locate package.json and Install
         run: |
+          # 自动寻找 package.json 所在的目录并进入
+          $packagePath = Get-ChildItem -Recurse -Filter "package.json" | Select-Object -First 1 -ExpandProperty DirectoryName
+          Write-Host "Found package.json in: $packagePath"
+          cd $packagePath
           npm install --force
+          
+          # 将该路径存入环境变量，供后续步骤使用
+          echo "PROJECT_ROOT=$packagePath" >> $env:GITHUB_ENV
 
       - name: Build Electron App (EXE)
         run: |
+          cd ${{ env.PROJECT_ROOT }}
           npm run build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -38,14 +41,13 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Video-Hub-App-Exe
-          # 注意：这里的路径是相对于根目录的，如果打包输出也在子文件夹，需要对应修改
-          path: Video-Hub-App/dist/*.exe
+          # 动态匹配生成的 exe 文件
+          path: "**/dist/*.exe"
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          files: |
-            Video-Hub-App/dist/*.exe
+          files: "**/dist/*.exe"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
