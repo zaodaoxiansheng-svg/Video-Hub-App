@@ -10,6 +10,11 @@ jobs:
   build_on_windows:
     runs-on: windows-latest
 
+    # 定义全局工作目录，省去每一步都写一遍
+    defaults:
+      run:
+        working-directory: ./Video-Hub-App
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -18,12 +23,10 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 18
-          # 删除了 cache: 'npm'，避免找不到 lock 文件报错
 
       - name: Install Dependencies
         run: |
           npm install --force
-        # --force 可以忽略一些旧项目常见的依赖冲突
 
       - name: Build Electron App (EXE)
         run: |
@@ -35,13 +38,14 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: Video-Hub-App-Exe
-          path: dist/*.exe
+          # 注意：这里的路径是相对于根目录的，如果打包输出也在子文件夹，需要对应修改
+          path: Video-Hub-App/dist/*.exe
 
       - name: Create Release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            dist/*.exe
+            Video-Hub-App/dist/*.exe
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
