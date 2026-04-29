@@ -1,0 +1,47 @@
+name: Build and Release Video-Hub-App
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build_on_windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          # 删除了 cache: 'npm'，避免找不到 lock 文件报错
+
+      - name: Install Dependencies
+        run: |
+          npm install --force
+        # --force 可以忽略一些旧项目常见的依赖冲突
+
+      - name: Build Electron App (EXE)
+        run: |
+          npm run build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Video-Hub-App-Exe
+          path: dist/*.exe
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*.exe
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
